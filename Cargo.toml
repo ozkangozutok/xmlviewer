@@ -1,0 +1,22 @@
+[package]
+name = "xmlviewer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe = "0.31"
+encoding_rs = "0.8"
+memchr = "2"
+memmap2 = "0.9"
+quick-xml = "0.37"
+regex = "1"
+rfd = "0.15"
+ureq = "2"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 4
+
+[profile.dev.package."*"]
+opt-level = 3
