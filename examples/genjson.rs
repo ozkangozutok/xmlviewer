@@ -1,5 +1,5 @@
 //! JSON test file generator: `cargo run --release --example genjson -- out.json 1024 [--broken]`
-//! (size in MB). One big array of objects with nesting, Turkish text and escapes.
+//! (size in MB). One big array of objects with nesting, non-ASCII text and escapes.
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -15,23 +15,23 @@ fn main() -> std::io::Result<()> {
     let mut n: u64 = 0;
     macro_rules! out { ($($t:tt)*) => {{ let s = format!($($t)*); n += s.len() as u64; w.write_all(s.as_bytes())?; }} }
 
-    out!("{{\n  \"başlık\": \"Büyük test — şğüöçıİ\",\n  \"kaçış\": \"tırnak \\\" ve \\u015f\\u0131 \\n satır\",\n");
-    out!("  \"derin\": ");
+    out!("{{\n  \"título\": \"Big test — şğüöçıİ äß ñ 日本語\",\n  \"escapes\": \"quote \\\" and \\u015f\\u0131 \\n newline\",\n");
+    out!("  \"deep\": ");
     for _ in 0..2000 {
         out!("{{\"k\":");
     }
-    out!("\"dip\"");
+    out!("\"bottom\"");
     for _ in 0..2000 {
         out!("}}");
     }
-    out!(",\n  \"urunler\": [\n");
+    out!(",\n  \"products\": [\n");
     let mut i: u64 = 0;
     while n < target {
         if i > 0 {
             out!(",\n");
         }
         out!(
-            "    {{\"id\": {i}, \"ad\": \"Ürün {i}\", \"fiyat\": {}.{:02}, \"stokta\": {}, \"etiketler\": [\"a\", \"b\"], \"detay\": {{\"aciklama\": \"Açıklama #{i}\", \"not\": null}}}}",
+            "    {{\"id\": {i}, \"name\": \"Product {i}\", \"price\": {}.{:02}, \"in_stock\": {}, \"tags\": [\"a\", \"b\"], \"details\": {{\"description\": \"Description #{i}\", \"note\": null}}}}",
             i % 1000,
             i % 100,
             i % 3 != 0
@@ -39,10 +39,10 @@ fn main() -> std::io::Result<()> {
         i += 1;
     }
     if broken {
-        out!(",\n    {{\"id\": \"bozuk\" \"eksik\": 1}}");
+        out!(",\n    {{\"id\": \"broken\" \"missing\": 1}}");
     }
     out!("\n  ]\n}}\n");
     w.flush()?;
-    eprintln!("{path}: {n} bytes, {i} urun");
+    eprintln!("{path}: {n} bytes, {i} products");
     Ok(())
 }

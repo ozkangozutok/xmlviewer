@@ -23,7 +23,7 @@ pub struct SearchJob {
 
 pub fn build_regex(pattern: &str, use_regex: bool, case_sensitive: bool, enc: &'static Encoding) -> Result<Regex, String> {
     if pattern.is_empty() {
-        return Err("Arama metni boş".into());
+        return Err("Search text is empty".into());
     }
     let source = if use_regex || enc == UTF_8 {
         if use_regex { pattern.to_string() } else { regex::escape(pattern) }

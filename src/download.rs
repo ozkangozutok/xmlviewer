@@ -38,18 +38,18 @@ pub fn clean_old() {
 pub fn normalize_url(input: &str) -> Result<String, String> {
     let s = input.trim();
     if s.is_empty() {
-        return Err("URL boş".into());
+        return Err("URL is empty".into());
     }
     let s = if s.contains("://") { s.to_string() } else { format!("https://{s}") };
     if !(s.starts_with("http://") || s.starts_with("https://")) {
-        return Err("Yalnızca http:// ve https:// adresleri desteklenir".into());
+        return Err("Only http:// and https:// URLs are supported".into());
     }
     Ok(s)
 }
 
 fn file_name(url: &str) -> String {
     let path = url.split(['?', '#']).next().unwrap_or(url);
-    let last = path.rsplit('/').find(|s| !s.is_empty() && !s.contains(':')).unwrap_or("indirilen");
+    let last = path.rsplit('/').find(|s| !s.is_empty() && !s.contains(':')).unwrap_or("download");
     let clean: String = last
         .chars()
         .map(|c| if c.is_alphanumeric() || matches!(c, '.' | '-' | '_') { c } else { '_' })
@@ -82,7 +82,7 @@ fn fetch(job: &Download) -> Result<PathBuf, String> {
         .build();
     let resp = match agent.get(&job.url).call() {
         Ok(r) => r,
-        Err(ureq::Error::Status(code, r)) => return Err(format!("Sunucu {code} {} döndürdü", r.status_text())),
+        Err(ureq::Error::Status(code, r)) => return Err(format!("Server returned {code} {}", r.status_text())),
         Err(e) => return Err(e.to_string()),
     };
     if let Some(len) = resp.header("Content-Length").and_then(|v| v.parse().ok()) {
@@ -95,18 +95,18 @@ fn fetch(job: &Download) -> Result<PathBuf, String> {
     let mut buf = vec![0u8; 1 << 20];
     let res = loop {
         if job.cancel.load(Ordering::Relaxed) {
-            break Err("İndirme iptal edildi".to_string());
+            break Err("Download cancelled".to_string());
         }
         match reader.read(&mut buf) {
             Ok(0) => break Ok(()),
             Ok(n) => {
                 if let Err(e) = out.write_all(&buf[..n]) {
-                    break Err(format!("Diske yazılamadı: {e}"));
+                    break Err(format!("Could not write to disk: {e}"));
                 }
                 job.received.fetch_add(n as u64, Ordering::Relaxed);
             }
             Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
-            Err(e) => break Err(format!("İndirme kesildi: {e}")),
+            Err(e) => break Err(format!("Download interrupted: {e}")),
         }
     };
     drop(out);

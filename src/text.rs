@@ -7,7 +7,7 @@ use encoding_rs::{Encoding, UTF_8};
 /// Picks the document encoding from the BOM or the XML declaration.
 pub fn detect_encoding(data: &[u8]) -> Result<&'static Encoding, String> {
     if data.starts_with(&[0xFF, 0xFE]) || data.starts_with(&[0xFE, 0xFF]) {
-        return Err("UTF-16 dosyalar desteklenmiyor. Dosyayı UTF-8'e dönüştürüp tekrar açın.".into());
+        return Err("UTF-16 files are not supported. Convert the file to UTF-8 and open it again.".into());
     }
     if data.starts_with(&[0xEF, 0xBB, 0xBF]) {
         return Ok(UTF_8);
@@ -30,7 +30,7 @@ pub fn detect_encoding(data: &[u8]) -> Result<&'static Encoding, String> {
     let value = &value[..memchr::memchr(quote, value).unwrap_or(value.len())];
     match Encoding::for_label(value) {
         Some(enc) if enc.is_ascii_compatible() => Ok(enc),
-        Some(enc) => Err(format!("{} kodlaması desteklenmiyor. Dosyayı UTF-8'e dönüştürüp tekrar açın.", enc.name())),
+        Some(enc) => Err(format!("The {} encoding is not supported. Convert the file to UTF-8 and open it again.", enc.name())),
         None => Ok(UTF_8),
     }
 }
@@ -197,7 +197,7 @@ pub fn fmt_num(n: u64) -> String {
     let mut out = String::with_capacity(s.len() + s.len() / 3);
     for (i, c) in s.chars().enumerate() {
         if i > 0 && (s.len() - i) % 3 == 0 {
-            out.push('.');
+            out.push(',');
         }
         out.push(c);
     }
@@ -250,6 +250,6 @@ mod tests {
     fn compacting() {
         assert_eq!(compact("  a \n\t b  ", 10), "a b");
         assert_eq!(compact("abcdef", 3), "abc…");
-        assert_eq!(fmt_num(1234567), "1.234.567");
+        assert_eq!(fmt_num(1234567), "1,234,567");
     }
 }

@@ -103,10 +103,10 @@ impl Doc {
         let file = File::open(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         let len = file.metadata().map_err(|e| e.to_string())?.len();
         if len >= index::MAX_FILE_SIZE {
-            return Err(format!("{}: en fazla 1 TB desteklenir", path.display()));
+            return Err(format!("{}: files up to 1 TB are supported", path.display()));
         }
         if len == 0 {
-            return Err(format!("{}: dosya boş", path.display()));
+            return Err(format!("{}: file is empty", path.display()));
         }
         // SAFETY: the file is opened read-only; Windows prevents truncation while mapped.
         let mmap = unsafe { Mmap::map(&file) }.map_err(|e| format!("{}: {e}", path.display()))?;
@@ -325,7 +325,7 @@ impl Doc {
         }
     }
 
-    /// First few members of a container, e.g. `id: 7, ad: "x", detay: {…} …`.
+    /// First few members of a container, e.g. `id: 7, name: "x", detail: {…} …`.
     fn json_preview(&self, index: &Index, id: u32) -> String {
         let mut parts = Vec::new();
         let mut c = index.first_child(id);
@@ -358,7 +358,7 @@ impl Doc {
         }
         match n.kind() {
             Kind::Object | Kind::Array => {
-                let (open, close, unit) = if n.kind() == Kind::Object { ("{", "}", "alan") } else { ("[", "]", "öğe") };
+                let (open, close, unit) = if n.kind() == Kind::Object { ("{", "}", "fields") } else { ("[", "]", "items") };
                 if n.child_count == 0 {
                     push(&format!("{open}{close}"), pal.punct);
                 } else {
@@ -416,7 +416,7 @@ impl Doc {
                     push(">", pal.punct);
                 } else {
                     push(">", pal.punct);
-                    push(&format!("   {} alt öğe", fmt_num(n.child_count as u64)), pal.weak);
+                    push(&format!("   {} children", fmt_num(n.child_count as u64)), pal.weak);
                 }
             }
             Kind::Text => push(&self.text_content(index, id, 300), pal.text),
@@ -615,7 +615,7 @@ impl App {
     fn pick_file(&mut self, ctx: &egui::Context) {
         if let Some(p) = rfd::FileDialog::new()
             .add_filter("XML / JSON", &["xml", "json", "geojson", "jsonl", "ndjson", "xsd", "xsl", "xslt", "svg", "rss", "atom", "config", "gpx", "kml"])
-            .add_filter("Tüm dosyalar", &["*"])
+            .add_filter("All files", &["*"])
             .pick_file()
         {
             self.open(p, ctx);
@@ -640,7 +640,7 @@ impl App {
                 doc.search = Some(job);
                 self.message = None;
             }
-            Err(e) => self.message = Some(format!("Arama hatası: {e}")),
+            Err(e) => self.message = Some(format!("Search error: {e}")),
         }
     }
 
@@ -767,12 +767,12 @@ impl App {
 
     fn top_bar(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            if ui.button("Aç…").on_hover_text("Ctrl+O").clicked() {
+            if ui.button("Open…").on_hover_text("Ctrl+O").clicked() {
                 self.pick_file(ui.ctx());
             }
             let url_resp = ui.add(
                 egui::TextEdit::singleline(&mut self.url_text)
-                    .hint_text("https://… XML adresi (Ctrl+L)")
+                    .hint_text("https://… XML or JSON URL (Ctrl+L)")
                     .desired_width(300.0),
             );
             if self.focus_url {
@@ -793,10 +793,10 @@ impl App {
                     ui.spinner();
                     ui.label(fmt_bytes(got));
                 }
-                if ui.small_button("✖").on_hover_text("İndirmeyi durdur").clicked() {
+                if ui.small_button("✖").on_hover_text("Stop download").clicked() {
                     job.cancel.store(true, Ordering::Relaxed);
                 }
-            } else if ui.button("İndir").on_hover_text("URL'deki XML'i indirip aç").clicked() || url_enter {
+            } else if ui.button("Download").on_hover_text("Download and open the file at this URL").clicked() || url_enter {
                 self.start_download(ui.ctx());
             }
             ui.separator();
@@ -804,7 +804,7 @@ impl App {
             let resp = ui.add_enabled(
                 ready,
                 egui::TextEdit::singleline(&mut self.search_text)
-                    .hint_text("Ara (Ctrl+F)")
+                    .hint_text("Search (Ctrl+F)")
                     .desired_width(280.0),
             );
             if self.focus_search {
@@ -812,9 +812,9 @@ impl App {
                 self.focus_search = false;
             }
             let enter = resp.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
-            ui.toggle_value(&mut self.case_sensitive, "Aa").on_hover_text("Büyük/küçük harf duyarlı");
-            ui.toggle_value(&mut self.use_regex, ".*").on_hover_text("Düzenli ifade (regex)");
-            if (ui.add_enabled(ready, egui::Button::new("Ara")).clicked() || enter) && ready {
+            ui.toggle_value(&mut self.case_sensitive, "Aa").on_hover_text("Match case");
+            ui.toggle_value(&mut self.use_regex, ".*").on_hover_text("Regular expression");
+            if (ui.add_enabled(ready, egui::Button::new("Search")).clicked() || enter) && ready {
                 self.start_search();
             }
 
@@ -822,10 +822,10 @@ impl App {
             if let Some(doc) = &self.doc {
                 if let Some(job) = &doc.search {
                     let count = job.results.lock().unwrap().len();
-                    if ui.add_enabled(count > 0, egui::Button::new("◀")).on_hover_text("Önceki (Shift+F3)").clicked() {
+                    if ui.add_enabled(count > 0, egui::Button::new("◀")).on_hover_text("Previous (Shift+F3)").clicked() {
                         nav = Some(false);
                     }
-                    if ui.add_enabled(count > 0, egui::Button::new("▶")).on_hover_text("Sonraki (F3)").clicked() {
+                    if ui.add_enabled(count > 0, egui::Button::new("▶")).on_hover_text("Next (F3)").clicked() {
                         nav = Some(true);
                     }
                     let pos = doc.search_pos.map_or("-".to_string(), |p| fmt_num(p as u64 + 1));
@@ -834,7 +834,7 @@ impl App {
                     if !job.done.load(Ordering::Acquire) {
                         let f = job.progress.load(Ordering::Relaxed) as f32 / doc.data.len().max(1) as f32;
                         ui.add(egui::ProgressBar::new(f).desired_width(120.0).show_percentage());
-                        if ui.small_button("✖").on_hover_text("Aramayı durdur").clicked() {
+                        if ui.small_button("✖").on_hover_text("Stop search").clicked() {
                             job.cancel.store(true, Ordering::Relaxed);
                         }
                         ui.ctx().request_repaint_after(Duration::from_millis(100));
@@ -854,7 +854,7 @@ impl App {
                 ui.separator();
             }
             let Some(doc) = &self.doc else {
-                ui.label("Bir XML veya JSON dosyası açın veya pencereye sürükleyip bırakın.");
+                ui.label("Open an XML or JSON file, or drop one onto the window.");
                 return;
             };
             match &doc.source {
@@ -871,7 +871,7 @@ impl App {
             if let State::Ready { index, secs } = &doc.state {
                 ui.separator();
                 ui.label(format!(
-                    "{} düğüm · {:.2} sn · {:.0} MB/sn",
+                    "{} nodes · {:.2} s · {:.0} MB/s",
                     fmt_num(index.nodes.len() as u64),
                     secs,
                     doc.data.len() as f64 / 1_048_576.0 / secs.max(1e-6)
@@ -880,7 +880,7 @@ impl App {
                     ui.separator();
                     ui.colored_label(
                         Color32::from_rgb(230, 80, 80),
-                        format!("XML hatası satır {}, sütun {}: {}", fmt_num(e.line), e.column, e.message),
+                        format!("Parse error at line {}, column {}: {}", fmt_num(e.line), e.column, e.message),
                     );
                 }
             }
@@ -891,7 +891,7 @@ impl App {
         let Some(doc) = self.doc.as_mut() else { return };
         let Some(index) = doc.index() else { return };
         let Some(sel) = doc.selected else {
-            ui.weak("Bir düğüm seçin.");
+            ui.weak("Select a node.");
             return;
         };
         let node = doc.rows[sel].node;
@@ -903,14 +903,14 @@ impl App {
         let detail = doc.detail.as_ref().unwrap();
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
-                ui.strong("Yol:");
+                ui.strong("Path:");
                 ui.add(egui::Label::new(egui::RichText::new(&detail.path).monospace()).wrap());
             });
-            if ui.small_button("Yolu kopyala").clicked() {
+            if ui.small_button("Copy path").clicked() {
                 ui.ctx().copy_text(detail.path.clone());
             }
             ui.label(format!(
-                "Bayt {} – {} ({}) · {} alt öğe",
+                "Bytes {} – {} ({}) · {} children",
                 fmt_num(n.start()),
                 fmt_num(n.end()),
                 fmt_bytes(n.end() - n.start()),
@@ -918,7 +918,7 @@ impl App {
             ));
             if !detail.attrs.is_empty() {
                 ui.separator();
-                let title = if index.json { "Alanlar" } else { "Öznitelikler" };
+                let title = if index.json { "Fields" } else { "Attributes" };
                 ui.strong(format!("{title} ({})", detail.attrs.len()));
                 egui::Grid::new("attrs").striped(true).num_columns(2).show(ui, |ui| {
                     for (k, v) in &detail.attrs {
@@ -930,11 +930,11 @@ impl App {
             }
             ui.separator();
             ui.horizontal(|ui| {
-                ui.strong("Kaynak");
+                ui.strong("Source");
                 if detail.source_truncated {
-                    ui.weak(format!("(ilk {} gösteriliyor)", fmt_bytes(DETAIL_SRC_MAX as u64)));
+                    ui.weak(format!("(showing first {})", fmt_bytes(DETAIL_SRC_MAX as u64)));
                 }
-                if ui.small_button("Kopyala").on_hover_text("En fazla 50 MB").clicked() {
+                if ui.small_button("Copy").on_hover_text("Up to 50 MB").clicked() {
                     copy_src = true;
                 }
             });
@@ -953,7 +953,7 @@ impl App {
     fn tree(&mut self, ui: &mut egui::Ui) {
         let Some(doc) = self.doc.as_mut() else {
             ui.centered_and_justified(|ui| {
-                ui.heading("XML veya JSON dosyasını buraya sürükleyin veya \"Aç…\" ile seçin");
+                ui.heading("Drop an XML or JSON file here, or choose one with \"Open…\"");
             });
             return;
         };
@@ -964,7 +964,7 @@ impl App {
                 let secs = doc.opened.elapsed().as_secs_f64();
                 ui.add_space(ui.available_height() / 3.0);
                 ui.vertical_centered(|ui| {
-                    ui.heading("İndeksleniyor…");
+                    ui.heading("Indexing…");
                     ui.add(
                         egui::ProgressBar::new(done as f32 / total.max(1) as f32)
                             .desired_width(420.0)
@@ -1098,33 +1098,33 @@ impl App {
             let node = doc.rows.get(r).map(|row| row.node);
             if let Some(node) = node {
                 resp.context_menu(|ui| {
-                    if index.node(node).kind() == Kind::Element && ui.button("Adı kopyala").clicked() {
+                    if index.node(node).kind() == Kind::Element && ui.button("Copy name").clicked() {
                         ui.ctx().copy_text(doc.element_name(&index, node));
                         ui.close_menu();
                     }
                     if index.json {
                         if let (Some(key), _) = doc.json_member(&index, node) {
-                            if ui.button("Anahtarı kopyala").clicked() {
+                            if ui.button("Copy key").clicked() {
                                 ui.ctx().copy_text(key);
                                 ui.close_menu();
                             }
                         }
-                        if index.node(node).kind() == Kind::Value && ui.button("Değeri kopyala").clicked() {
+                        if index.node(node).kind() == Kind::Value && ui.button("Copy value").clicked() {
                             ui.ctx().copy_text(doc.json_scalar(&index, node, usize::MAX / 8).0);
                             ui.close_menu();
                         }
                     }
-                    if ui.button("Yolu kopyala").clicked() {
+                    if ui.button("Copy path").clicked() {
                         ui.ctx().copy_text(doc.node_path(&index, node));
                         ui.close_menu();
                     }
-                    if ui.button("Kaynağı kopyala").clicked() {
+                    if ui.button("Copy source").clicked() {
                         doc.copy_source(&index, node, ui.ctx());
                         ui.close_menu();
                     }
                     if index.is_expandable(node) {
                         let open = doc.is_open(node);
-                        if ui.button(if open { "Daralt" } else { "Genişlet" }).clicked() {
+                        if ui.button(if open { "Collapse" } else { "Expand" }).clicked() {
                             if let Some(p) = doc.row_of(node) {
                                 doc.toggle(&index, p);
                             }
