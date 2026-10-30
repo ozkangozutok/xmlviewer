@@ -2,6 +2,9 @@
 name = "xmlviewer"
 version = "0.1.0"
 edition = "2024"
+description = "Fast desktop viewer for very large XML and JSON files"
+license = "MIT"
+repository = "https://github.com/ozkangozutok/xmlviewer"
 
 [dependencies]
 eframe = "0.31"

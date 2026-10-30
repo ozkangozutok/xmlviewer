@@ -98,3 +98,7 @@ cargo test
 ## Contributing
 
 Issues and pull requests are welcome. Please run `cargo test` before opening a pull request.
+
+## License
+
+[MIT](LICENSE)
