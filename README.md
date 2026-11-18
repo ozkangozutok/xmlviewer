@@ -29,7 +29,12 @@ Get the latest build from the [Releases page](https://github.com/ozkangozutok/xm
    xattr -dr com.apple.quarantine /Applications/XmlViewer.app
    ```
 
-### Windows and Linux
+### Windows
+
+1. Download `xmlviewer-<version>-windows-x64.exe` (64-bit Windows 10 or 11). It is a single file; no installation is needed.
+2. Double-click it. The exe is not code-signed, so SmartScreen may warn on first launch: click **More info** and then **Run anyway**.
+
+### Linux
 
 There are no prebuilt binaries yet. [Build from source](#build-from-source) instead.
 
